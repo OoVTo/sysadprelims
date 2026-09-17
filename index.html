@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SysAd Prelim — 100 Flashcards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EDF0F3;
+    --panel:#FFFFFF;
+    --ink:#16202B;
+    --ink-soft:#5A6875;
+    --rule:#C9D2DA;
+    --ok:#1F6B4B;
+    --ok-fill:#2E8B62;
+    --miss:#9C3A25;
+    --miss-fill:#C0522F;
+    --focus:#16202B;
+    --radius:4px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#141A20;
+      --panel:#1C242C;
+      --ink:#E6ECF1;
+      --ink-soft:#97A5B2;
+      --rule:#333F4A;
+      --ok:#6FD3A3;
+      --ok-fill:#3E9E73;
+      --miss:#F0997C;
+      --miss-fill:#B8553A;
+      --focus:#E6ECF1;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#141A20;
+    --panel:#1C242C;
+    --ink:#E6ECF1;
+    --ink-soft:#97A5B2;
+    --rule:#333F4A;
+    --ok:#6FD3A3;
+    --ok-fill:#3E9E73;
+    --miss:#F0997C;
+    --miss-fill:#B8553A;
+    --focus:#E6ECF1;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    font-size:17px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:28px 20px 72px}
+
+  /* ---------- masthead ---------- */
+  .masthead{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  h1{
+    font-size:23px;font-weight:700;letter-spacing:-0.02em;margin:0;
+  }
+  h1 span{font-family:"IBM Plex Mono",monospace;font-weight:500;color:var(--ink-soft)}
+  .themebtn{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;
+    background:none;border:1px solid var(--rule);color:var(--ink-soft);
+    padding:5px 10px;border-radius:var(--radius);cursor:pointer;
+  }
+
+  /* ---------- tick strip ---------- */
+  .strip{display:flex;gap:2px;height:22px;align-items:flex-end;margin-bottom:6px}
+  .tick{flex:1 1 0;min-width:0;height:8px;background:var(--rule);border-radius:1px}
+  .tick.ok{background:var(--ok-fill);height:14px}
+  .tick.miss{background:var(--miss-fill);height:20px}
+  .tick.now{background:var(--ink);height:22px}
+  .striplabel{
+    display:flex;justify-content:space-between;
+    font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-soft);
+    border-top:1px solid var(--rule);padding-top:6px;margin-bottom:24px;
+  }
+
+  /* ---------- panel ---------- */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--rule);
+    border-radius:var(--radius);
+    padding:26px 24px;
+  }
+  .sec{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-soft);
+    margin:0 0 14px;
+  }
+  .prompt{font-size:22px;line-height:1.35;font-weight:600;letter-spacing:-0.01em;margin:0}
+  .answer{
+    margin-top:20px;padding-top:18px;border-top:2px solid var(--rule);
+    font-size:17px;line-height:1.6;
+  }
+  .answer ul{margin:8px 0 0;padding-left:20px}
+  .answer li{margin-bottom:4px}
+  .answer p{margin:0 0 10px}
+  .answer p:last-child{margin-bottom:0}
+  code,kbd{
+    font-family:"IBM Plex Mono",monospace;font-size:0.9em;
+    background:var(--paper);border:1px solid var(--rule);
+    padding:1px 5px;border-radius:3px;white-space:nowrap;
+  }
+  .hidden{display:none !important}
+
+  /* ---------- buttons ---------- */
+  .actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+  button{font-family:inherit;font-size:16px;cursor:pointer;border-radius:var(--radius)}
+  button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+  .big{
+    flex:1 1 180px;padding:13px 16px;font-weight:600;
+    background:var(--ink);color:var(--panel);border:1px solid var(--ink);
+  }
+  .grade{flex:1 1 150px;padding:13px 16px;font-weight:600;background:var(--panel)}
+  .grade.right{border:2px solid var(--ok-fill);color:var(--ok)}
+  .grade.wrong{border:2px solid var(--miss-fill);color:var(--miss)}
+  .ghost{
+    padding:10px 14px;font-size:14px;background:none;
+    border:1px solid var(--rule);color:var(--ink-soft);
+  }
+  .hint{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-soft);margin-top:14px}
+
+  /* ---------- setup ---------- */
+  .deckgrid{display:grid;grid-template-columns:1fr;gap:8px;margin:18px 0 20px}
+  .deckbtn{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;
+    text-align:left;padding:13px 15px;font-size:16px;
+    background:var(--panel);border:1px solid var(--rule);color:var(--ink);
+  }
+  .deckbtn[aria-pressed="true"]{border:2px solid var(--ink);font-weight:600}
+  .deckbtn em{font-family:"IBM Plex Mono",monospace;font-style:normal;font-size:13px;color:var(--ink-soft)}
+  .opts{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--ink-soft);margin-bottom:18px}
+  .opts input{width:16px;height:16px;accent-color:var(--ink)}
+  .lede{color:var(--ink-soft);margin:0 0 4px;font-size:16px}
+
+  /* ---------- results ---------- */
+  .score{font-family:"IBM Plex Mono",monospace;font-size:46px;font-weight:600;letter-spacing:-0.03em;margin:4px 0 2px}
+  .missed{margin-top:22px;border-top:1px solid var(--rule);padding-top:16px}
+  .missed h3{font-size:15px;margin:0 0 10px;font-weight:600}
+  .missed ol{margin:0;padding-left:22px;color:var(--ink-soft);font-size:15px}
+  .missed li{margin-bottom:7px}
+  @media (max-width:520px){
+    .wrap{padding:20px 14px 60px}
+    .prompt{font-size:20px}
+    .tick{min-width:1px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <h1>System Administration &amp; Maintenance <span>/ prelim</span></h1>
+    <button class="themebtn" id="themebtn" type="button">Dark</button>
+  </div>
+
+  <div class="strip" id="strip" aria-hidden="true"></div>
+  <div class="striplabel">
+    <span id="stripleft">100 cards</span>
+    <span id="stripright">right 0 &nbsp;·&nbsp; wrong 0</span>
+  </div>
+
+  <!-- SETUP -->
+  <section class="panel" id="setup">
+    <p class="lede">Pick a deck. Answer in your head, flip the card, then say whether you got it.</p>
+    <div class="deckgrid" id="deckgrid"></div>
+    <div class="opts">
+      <input type="checkbox" id="shuffle" checked>
+      <label for="shuffle">Shuffle the order</label>
+    </div>
+    <div class="actions">
+      <button class="big" id="startbtn" type="button">Start studying</button>
+    </div>
+    <p class="hint" id="savedline"></p>
+  </section>
+
+  <!-- CARD -->
+  <section class="panel hidden" id="cardview">
+    <p class="sec" id="cardsec"></p>
+    <p class="prompt" id="cardq"></p>
+    <div class="answer hidden" id="carda"></div>
+    <div class="actions" id="flipactions">
+      <button class="big" id="flipbtn" type="button">Show answer</button>
+    </div>
+    <div class="actions hidden" id="gradeactions">
+      <button class="grade right" id="rightbtn" type="button">I got it right</button>
+      <button class="grade wrong" id="wrongbtn" type="button">I got it wrong</button>
+    </div>
+    <p class="hint">Space or Enter flips · 1 = right · 2 = wrong</p>
+    <div class="actions">
+      <button class="ghost" id="quitbtn" type="button">End session</button>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section class="panel hidden" id="results">
+    <p class="sec" id="resultsec"></p>
+    <p class="score" id="scoreline">0/0</p>
+    <p class="lede" id="scorenote"></p>
+    <div class="actions">
+      <button class="big hidden" id="reviewbtn" type="button">Review what I missed</button>
+      <button class="ghost" id="againbtn" type="button">Run the same deck again</button>
+      <button class="ghost" id="homebtn" type="button">Back to decks</button>
+    </div>
+    <div class="missed hidden" id="missedbox">
+      <h3 id="missedhead">Missed this round</h3>
+      <ol id="missedlist"></ol>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const CARDS = [
+/* ---------- 1. Introduction to System Administration ---------- */
+{id:1,s:"Introduction",q:"What is system administration?",a:"The practice of installing, configuring, securing, and maintaining computer systems so they stay reliable, secure, and available to the people who depend on them."},
+{id:2,s:"Introduction",q:"The administrator's mandate reduces to five words. Name them.",a:"Availability, reliability, security, performance, recoverability."},
+{id:3,s:"Introduction",q:"Name at least five recurring responsibilities of a system administrator.",a:"<ul><li>Installing and configuring operating systems and services</li><li>Managing user accounts and access</li><li>Monitoring system health and performance</li><li>Backing up data and being able to restore it</li><li>Applying security patches and hardening systems</li><li>Troubleshooting incidents and supporting users</li><li>Automating repetitive tasks</li><li>Documenting configurations, procedures, and changes</li></ul>"},
+{id:4,s:"Introduction",q:"Which specializations grow out of system administration?",a:"Linux/Unix, Windows, network, database, cloud, DevOps/SRE, and security administration. They overlap heavily — a Linux administrator is still expected to understand networking, security, and increasingly the cloud."},
+{id:5,s:"Introduction",q:"Define <em>uptime</em>.",a:"The percentage of time a system is operational."},
+{id:6,s:"Introduction",q:"What does SLA stand for, and what is it?",a:"Service-level agreement — a formal commitment to a target uptime."},
+{id:7,s:"Introduction",q:"99% availability allows how much downtime per year?",a:"About 3 days, 15 hours."},
+{id:8,s:"Introduction",q:"99.9% availability allows how much downtime per year?",a:"About 8 hours, 46 minutes."},
+{id:9,s:"Introduction",q:"\u201cFour nines\u201d (99.99%) allows how much downtime per year?",a:"About 52 minutes."},
+{id:10,s:"Introduction",q:"\u201cFive nines\u201d (99.999%) allows how much downtime per year?",a:"About 5 minutes."},
+{id:11,s:"Introduction",q:"What does MTBF measure, and which way should it go?",a:"Mean time between failures — how long a system runs before breaking. Good administration pushes it <strong>up</strong>."},
+{id:12,s:"Introduction",q:"What does MTTR measure, and which way should it go?",a:"Mean time to recovery — how fast a system comes back after a failure. Good administration pushes it <strong>down</strong>."},
+{id:13,s:"Introduction",q:"Name the core ethical principles an administrator is held to.",a:"Integrity, privacy, least privilege, accountability, compliance with law and policy, clear communication, and continuous learning."},
+{id:14,s:"Introduction",q:"\u201cIf it isn't documented, it doesn't exist.\u201d What three kinds of documentation should you keep?",a:"<ul><li>Inventories and configurations</li><li>Step-by-step procedures</li><li>A change log</li></ul>Documentation is what lets a system be maintained by someone other than the person who built it."},
+{id:15,s:"Introduction",q:"What four things does a change log entry record?",a:"What changed, when, why, and by whom."},
+{id:16,s:"Introduction",q:"Define <em>change management</em>.",a:"Making changes deliberately and traceably, so that any change can be understood and reversed."},
+{id:17,s:"Introduction",q:"In the Philippines, which law binds anyone handling personal information, and which agency enforces it?",a:"The Data Privacy Act of 2012 (RA 10173), enforced by the National Privacy Commission."},
+
+/* ---------- 2. The Linux Filesystem & Command Line ---------- */
+{id:18,s:"Filesystem & CLI",q:"What does the shell do, and which one is the default on Ubuntu?",a:"It reads the commands you type and asks the kernel to carry them out. Ubuntu's default shell is <strong>Bash</strong>."},
+{id:19,s:"Filesystem & CLI",q:"Why do administrators work at the command line instead of a GUI?",a:"It is fast for repetitive work, usable over low-bandwidth remote connections, scriptable, and light on server resources."},
+{id:20,s:"Filesystem & CLI",q:"What pattern do most Linux commands follow?",a:"<code>command [options] [arguments]</code> — options usually start with a dash and often have a short form (<code>-a</code>) and a long form (<code>--all</code>)."},
+{id:21,s:"Filesystem & CLI",q:"In <code>ls -l /home</code>, name each of the three parts.",a:"<code>ls</code> is the command, <code>-l</code> is an option, <code>/home</code> is the argument."},
+{id:22,s:"Filesystem & CLI",q:"Where does the Linux filesystem start, and how are additional disks handled?",a:"Everything lives under a single tree starting at root (<code>/</code>). There are no drive letters — extra disks are mounted somewhere inside that one tree."},
+{id:23,s:"Filesystem & CLI",q:"Which directory holds regular users' home directories?",a:"<code>/home</code>"},
+{id:24,s:"Filesystem & CLI",q:"Which directory is the administrator's home directory?",a:"<code>/root</code> — note that this is not the same as <code>/</code>, the root of the tree."},
+{id:25,s:"Filesystem & CLI",q:"Which directory holds system-wide configuration files?",a:"<code>/etc</code>"},
+{id:26,s:"Filesystem & CLI",q:"What do <code>/bin</code> and <code>/sbin</code> hold?",a:"Essential commands and admin programs."},
+{id:27,s:"Filesystem & CLI",q:"What does <code>/usr</code> hold?",a:"Most installed programs and their data."},
+{id:28,s:"Filesystem & CLI",q:"What does <code>/var</code> hold, and what is in <code>/var/log</code>?",a:"Data that changes — logs, mail, and spools. <code>/var/log</code> holds the system's log files."},
+{id:29,s:"Filesystem & CLI",q:"What does <code>/tmp</code> hold?",a:"Temporary files, usually cleared on reboot."},
+{id:30,s:"Filesystem & CLI",q:"What does <code>/dev</code> hold?",a:"Device files representing hardware."},
+{id:31,s:"Filesystem & CLI",q:"What does <code>/proc</code> hold?",a:"A virtual view of the running kernel and its processes — not real files on disk."},
+{id:32,s:"Filesystem & CLI",q:"What do <code>pwd</code>, <code>ls</code>, and <code>cd</code> do?",a:"<code>pwd</code> prints where you are, <code>ls</code> lists contents, <code>cd</code> moves you to another directory."},
+{id:33,s:"Filesystem & CLI",q:"What do the <code>ls</code> options <code>-l</code>, <code>-a</code>, and <code>-h</code> do?",a:"<code>-l</code> shows details, <code>-a</code> includes hidden dotfiles, <code>-h</code> gives human-readable sizes. They combine: <code>ls -lah</code>."},
+{id:34,s:"Filesystem & CLI",q:"What do the path shortcuts <code>.</code>, <code>..</code>, <code>~</code>, and <code>-</code> mean?",a:"<code>.</code> current directory · <code>..</code> parent directory · <code>~</code> your home directory · <code>-</code> the previous directory you were in."},
+{id:35,s:"Filesystem & CLI",q:"Define an <em>absolute path</em> and give an example.",a:"A path that starts from <code>/</code> and always points to the same place no matter where you are, e.g. <code>/var/log/syslog</code>."},
+{id:36,s:"Filesystem & CLI",q:"Define a <em>relative path</em> and give an example.",a:"A path interpreted from wherever you currently are. From <code>/var</code>, the relative path <code>log/syslog</code> reaches the same file — but from anywhere else it doesn't."},
+{id:37,s:"Filesystem & CLI",q:"When would you use <code>cat</code> and when <code>less</code>?",a:"<code>cat</code> prints a whole file at once — fine for short files. <code>less</code> pages through a long file one screen at a time; <kbd>q</kbd> quits."},
+{id:38,s:"Filesystem & CLI",q:"What do <code>head</code>, <code>tail</code>, and <code>wc</code> do?",a:"<code>head</code> shows the first lines, <code>tail</code> the last lines, and <code>wc</code> counts lines, words, and characters."},
+{id:39,s:"Filesystem & CLI",q:"What do <code>mkdir -p</code> and <code>touch</code> do?",a:"<code>mkdir</code> makes a directory, and <code>-p</code> creates any missing parent directories along the way. <code>touch</code> creates an empty file or updates an existing file's timestamp."},
+{id:40,s:"Filesystem & CLI",q:"What do <code>cp -r</code> and <code>mv</code> do?",a:"<code>cp</code> copies, with <code>-r</code> needed for directories. <code>mv</code> moves a file — and moving a file to a new name within the same directory is how you rename."},
+{id:41,s:"Filesystem & CLI",q:"What does <code>rm</code> do, what are <code>-r</code> and <code>-i</code>, and what's the warning?",a:"<code>rm</code> removes files; <code>-r</code> for directories, <code>-i</code> to confirm each one. It is <strong>permanent</strong> — there is no recycle bin. Read the command before pressing Enter, especially with a wildcard."},
+{id:42,s:"Filesystem & CLI",q:"What does the wildcard <code>*</code> match?",a:"Any number of characters — so <code>*.log</code> catches every log file in the directory."},
+{id:43,s:"Filesystem & CLI",q:"What does <code>?</code> match, and why does <code>file?.txt</code> not match <code>file10.txt</code>?",a:"<code>?</code> matches exactly one character. <code>file?.txt</code> matches <code>file1.txt</code> but not <code>file10.txt</code>, because <code>10</code> is two characters."},
+{id:44,s:"Filesystem & CLI",q:"What does the wildcard <code>[ ]</code> match?",a:"One character taken from the set inside the brackets — e.g. <code>file[123].txt</code> matches file1, file2, and file3."},
+{id:45,s:"Filesystem & CLI",q:"What is the difference between <code>&gt;</code> and <code>&gt;&gt;</code>?",a:"<code>&gt;</code> sends output into a file, <strong>replacing</strong> its contents. <code>&gt;&gt;</code> <strong>appends</strong> output to the end of the file."},
+{id:46,s:"Filesystem & CLI",q:"What does <code>|</code> do, and how does <code>ls /etc &gt; list.txt</code> differ from <code>ls /etc | less</code>?",a:"<code>|</code> pipes one command's output into the next command's input. The first saves the listing into a file; the second pages through it on screen without saving anything."},
+{id:47,s:"Filesystem & CLI",q:"How do you get help, save typing, and avoid the classic naming mistake?",a:"<code>man command</code> opens the manual and <code>command --help</code> gives a quick summary. <kbd>Tab</kbd> autocompletes names and <kbd>Up</kbd> recalls previous commands. Linux is case-sensitive: <code>File.txt</code> and <code>file.txt</code> are different files."},
+
+/* ---------- 3. Users, Groups & Permissions ---------- */
+{id:48,s:"Users & Permissions",q:"What is the basis of Linux's security model, and what identifies an account?",a:"Every person and service gets its own account. Each account has a numeric UID and belongs to at least one group, identified by a GID."},
+{id:49,s:"Users & Permissions",q:"Name the three kinds of accounts and their UIDs.",a:"<ul><li><strong>root</strong> — the superuser, UID 0, unlimited power</li><li><strong>Regular users</strong> — real people, UIDs usually starting at 1000</li><li><strong>System/service accounts</strong> — run background services, not meant for login</li></ul>"},
+{id:50,s:"Users & Permissions",q:"Which file holds accounts, which holds encrypted passwords, and which holds group memberships?",a:"<code>/etc/passwd</code> defines accounts, <code>/etc/shadow</code> holds encrypted passwords, <code>/etc/group</code> holds group memberships."},
+{id:51,s:"Users & Permissions",q:"Name the seven colon-separated fields of a line in <code>/etc/passwd</code>.",a:"Username, password placeholder, UID, GID, comment, home directory, login shell."},
+{id:52,s:"Users & Permissions",q:"Which command creates a user with a home directory and a shell?",a:"<code>useradd -m -s /bin/bash name</code> — <code>-m</code> makes the home directory, <code>-s</code> sets the login shell."},
+{id:53,s:"Users & Permissions",q:"What do <code>passwd</code>, <code>usermod</code>, and <code>userdel -r</code> do?",a:"<code>passwd name</code> sets or changes a password, <code>usermod</code> modifies an existing account, and <code>userdel -r name</code> deletes the user along with their home directory."},
+{id:54,s:"Users & Permissions",q:"How do you create a group, and how do you inspect someone's memberships?",a:"<code>groupadd name</code> creates a group. <code>groups user</code> or <code>id user</code> shows what a user belongs to."},
+{id:55,s:"Users & Permissions",q:"In <code>usermod -aG group user</code>, what does the <code>-a</code> do and what happens if you forget it?",a:"<code>-a</code> means <strong>append</strong>. Without it, the listed group <em>replaces</em> all of the user's supplementary groups — a classic way to lock someone out of everything."},
+{id:56,s:"Users & Permissions",q:"What is the difference between a primary and a supplementary group?",a:"Every user has exactly one primary group, used for files they create, plus any number of supplementary groups that grant additional access."},
+{id:57,s:"Users & Permissions",q:"Which commands change a file's owner and group?",a:"<code>chown</code> changes the owner, <code>chgrp</code> changes the group, and <code>chown user:group file</code> changes both at once."},
+{id:58,s:"Users & Permissions",q:"What are the ten characters at the start of an <code>ls -l</code> line?",a:"One file-type character, followed by three groups of three permissions — for the owner, the group, and others."},
+{id:59,s:"Users & Permissions",q:"What does <strong>read</strong> allow on a file, and on a directory?",a:"On a file: view its contents. On a directory: list the names inside it."},
+{id:60,s:"Users & Permissions",q:"What does <strong>write</strong> allow on a file, and on a directory?",a:"On a file: change its contents. On a directory: create, rename, or delete entries inside it."},
+{id:61,s:"Users & Permissions",q:"What does <strong>execute</strong> allow on a file, and on a directory?",a:"On a file: run it as a program. On a directory: enter it and pass through it (<code>cd</code> into it)."},
+{id:62,s:"Users & Permissions",q:"A teammate can list a directory's contents but cannot <code>cd</code> into it. What's missing?",a:"Execute (<code>x</code>) on the directory. Read lets you see the names; execute is what lets you enter. Fix with something like <code>chmod 750 dir</code>."},
+{id:63,s:"Users & Permissions",q:"What three parts make up symbolic mode in <code>chmod</code>?",a:"A class — <code>u</code> owner, <code>g</code> group, <code>o</code> others, <code>a</code> all — an operator (<code>+</code>, <code>-</code>, <code>=</code>), and the permissions."},
+{id:64,s:"Users & Permissions",q:"What do <code>chmod u+x script.sh</code> and <code>chmod o=r notes.txt</code> do?",a:"The first grants the owner execute on the script. The second sets others to read-only on the file, removing anything else they had."},
+{id:65,s:"Users & Permissions",q:"What numeric value does each permission carry?",a:"read = 4, write = 2, execute = 1. Add them per class to get that class's digit."},
+{id:66,s:"Users & Permissions",q:"What do the digits 7, 6, 5, 4, and 0 stand for?",a:"7 = <code>rwx</code> · 6 = <code>rw-</code> · 5 = <code>r-x</code> · 4 = <code>r--</code> · 0 = <code>---</code>"},
+{id:67,s:"Users & Permissions",q:"What are 755, 644, and 700 typically used for?",a:"<strong>755</strong> — directories and scripts. <strong>644</strong> — ordinary files. <strong>700</strong> — a private directory."},
+{id:68,s:"Users & Permissions",q:"What are 640, 600, and 770 typically used for?",a:"<strong>640</strong> — owner edits, group reads. <strong>600</strong> — private files and keys. <strong>770</strong> — a folder shared by one group."},
+{id:69,s:"Users & Permissions",q:"Convert <code>rwxr-xr--</code> to octal.",a:"<strong>754</strong> — owner 4+2+1 = 7, group 4+1 = 5, others 4."},
+{id:70,s:"Users & Permissions",q:"Convert <code>rw-r-----</code> to octal, then say who can do what.",a:"<strong>640</strong>. The owner can read and modify the file; group members can read it but not change it; everyone else cannot open it at all. Nobody can execute it."},
+{id:71,s:"Users & Permissions",q:"Describe <code>chmod 750</code> in words, for each of the three classes.",a:"Owner: read, write, execute. Group: read and execute, but not write. Others: nothing at all."},
+{id:72,s:"Users & Permissions",q:"Why is <code>sudo</code> preferred over logging in as root — safety and accountability?",a:"<p><strong>Safety:</strong> you work as a regular user and borrow root's power one command at a time, so a mistyped command has a safeguard.</p><p><strong>Accountability:</strong> only members of the <code>sudo</code> group may use it, and every use is logged against a real username — root alone is anonymous and shared. That's least privilege plus accountability in practice.</p>"},
+{id:73,s:"Users & Permissions",q:"What does <code>umask</code> do, and what does Ubuntu's typical 022 produce?",a:"It filters the default permissions on newly created things. 022 yields <strong>644</strong> for new files and <strong>755</strong> for new directories."},
+
+/* ---------- 4. Software & Package Management ---------- */
+{id:74,s:"Packages",q:"What is a <em>package</em>?",a:"A bundle of precompiled software together with its metadata — version, file list, and dependencies."},
+{id:75,s:"Packages",q:"What is a <em>package manager</em>?",a:"A tool that installs, updates, and removes packages and resolves their dependencies automatically."},
+{id:76,s:"Packages",q:"What is a <em>repository</em>, and what does your machine keep locally?",a:"An online collection of packages your system is configured to trust. Your machine keeps a local index of what's available there."},
+{id:77,s:"Packages",q:"Name the format and the tools for the two dominant package families.",a:"<strong>Debian/Ubuntu:</strong> <code>.deb</code>, high-level <code>apt</code>, low-level <code>dpkg</code>.<br><strong>Red Hat/Fedora:</strong> <code>.rpm</code>, high-level <code>dnf</code>, low-level <code>rpm</code>."},
+{id:78,s:"Packages",q:"What is the difference between a high-level and a low-level package tool?",a:"The high-level tool talks to repositories and resolves dependencies. The low-level tool operates on a single local package file and does neither. That difference explains most package-management confusion."},
+{id:79,s:"Packages",q:"What's the difference between <code>apt update</code> and <code>apt upgrade</code>?",a:"<code>update</code> refreshes the local package index (the list of what's available). <code>upgrade</code> actually installs the newer versions."},
+{id:80,s:"Packages",q:"Which commands find and inspect a package before installing it?",a:"<code>apt search</code> to find one, <code>apt show</code> to inspect it."},
+{id:81,s:"Packages",q:"What does <code>sudo apt install pkg</code> do that <code>dpkg</code> cannot?",a:"It installs the package <em>and pulls in its dependencies</em> from the configured repositories."},
+{id:82,s:"Packages",q:"Distinguish <code>apt remove</code> from <code>apt purge</code>, and say when you'd choose each.",a:"<p><code>remove</code> deletes the package but leaves its configuration files behind; <code>purge</code> deletes the configuration too.</p><p>Use <code>remove</code> when you may reinstall and want your tuned config back. Use <code>purge</code> when you're done with the package for good, or when a broken config is the reason you're reinstalling.</p>"},
+{id:83,s:"Packages",q:"What does <code>sudo apt autoremove</code> do?",a:"Cleans up dependencies that were pulled in automatically and that nothing needs anymore."},
+{id:84,s:"Packages",q:"A vendor hands you a <code>.deb</code>. You run <code>sudo dpkg -i file.deb</code> and it fails with missing-dependency errors. Why?",a:"<code>dpkg</code> installs exactly the file you gave it. It checks dependencies but cannot fetch them, because it doesn't talk to repositories — so it stops with the package half-installed."},
+{id:85,s:"Packages",q:"What is the standard fix after <code>dpkg -i</code> fails on dependencies, and why does it work?",a:"<code>sudo apt install -f</code> (<code>-f</code> = fix broken dependencies). It works because <code>apt</code> <em>can</em> reach the repositories, so it downloads and installs the missing pieces and finishes the job <code>dpkg</code> started."},
+{id:86,s:"Packages",q:"Name Ubuntu's four repository components, and how packages are verified.",a:"<strong>main</strong> (officially supported open source), <strong>restricted</strong> (supported, restrictive licence), <strong>universe</strong> (community-maintained open source), <strong>multiverse</strong> (legally restricted). Packages are cryptographically signed so the system can verify where they came from."},
+{id:87,s:"Packages",q:"What is a PPA, how do you add one, and what's the security consideration?",a:"<p>A community repository for software that isn't in the default repos or that you need a newer version of. Add it with <code>sudo add-apt-repository</code>, then <code>apt update</code>, then install.</p><p>A third-party repository can install and update software on your system <strong>with root privileges</strong> — add only sources you trust.</p>"},
+
+/* ---------- 5. Processes, Services & systemd ---------- */
+{id:88,s:"Processes & systemd",q:"What is the difference between a program and a process?",a:"A program is a file on disk. A process is a running instance of it, loaded into memory and executing."},
+{id:89,s:"Processes & systemd",q:"What do PID and PPID mean?",a:"PID is the process's own numeric ID. PPID is the ID of its parent process."},
+{id:90,s:"Processes & systemd",q:"What do <code>ps aux</code>, <code>top</code>, and <code>htop</code> show?",a:"<code>ps aux</code> gives a one-time snapshot of all processes. <code>top</code> is a live, interactive view and is built in. <code>htop</code> is a friendlier live view but must be installed."},
+{id:91,s:"Processes & systemd",q:"Something is slow. What is the workflow for finding the culprit?",a:"Open a live view (<code>top</code> or <code>htop</code>), sort by CPU or memory, read the COMMAND column to identify the culprit, and note its PID before acting."},
+{id:92,s:"Processes & systemd",q:"What is SIGTERM, and what number is it?",a:"Signal 15, the default <code>kill</code>. A polite request to shut down cleanly, letting the program save its state."},
+{id:93,s:"Processes & systemd",q:"What is SIGKILL, and what's the rule about using it?",a:"Signal 9 — <code>kill -9</code>. Forced, immediate termination with no chance to clean up. Always try plain <code>kill</code> first; the forced version is a last resort, not a first move."},
+{id:94,s:"Processes & systemd",q:"What do <code>killall</code> and <code>nice</code>/<code>renice</code> do?",a:"<code>killall name</code> signals every process with that name. <code>nice</code> and <code>renice</code> adjust a process's scheduling priority."},
+{id:95,s:"Processes & systemd",q:"What is a <em>service</em> (or daemon)?",a:"A program that runs in the background providing ongoing functionality — a web server, a database, a scheduler."},
+{id:96,s:"Processes & systemd",q:"What is systemd, and what is special about its PID?",a:"The service manager on modern Ubuntu. It is the first process the kernel starts — <strong>PID 1</strong> — and it brings up and supervises everything else."},
+{id:97,s:"Processes & systemd",q:"What do <code>start</code>, <code>stop</code>, <code>restart</code>, and <code>reload</code> do in <code>systemctl</code>?",a:"<code>start</code> runs it now, <code>stop</code> halts it now, <code>restart</code> stops then starts it, and <code>reload</code> re-reads its configuration without a full restart."},
+{id:98,s:"Processes & systemd",q:"What does <code>systemctl status svc</code> tell you?",a:"Whether the service is running, plus its recent log lines."},
+{id:99,s:"Processes & systemd",q:"A web server works now but is gone after a reboot. What was forgotten, and what's the one-step command?",a:"<p><code>enable</code>. <code>start</code> affects right now; <code>enable</code> affects every future boot, and the two are independent — a service can be running but not enabled, or enabled but stopped.</p><p><code>sudo systemctl enable --now svc</code> does both at once.</p>"},
+{id:100,s:"Processes & systemd",q:"Name the useful <code>journalctl</code> options, and the pattern for a service that won't start.",a:"<p><code>-u service</code> everything for one service · <code>-u service -f</code> follow live · <code>--since \"10 min ago\"</code> recent entries · <code>-b</code> since last boot.</p><p>The pattern: <code>systemctl status</code> tells you it failed, the journal tells you <em>why</em>. Read the last few lines — a port in use, a config syntax error, a missing directory — and fix the cause instead of re-running <code>start</code>.</p>"}
+];
+
+const SECTIONS = ["Introduction","Filesystem & CLI","Users & Permissions","Packages","Processes & systemd"];
+const STORE_KEY = "sysad-flashcards-missed";
+
+// ---- state ----
+let deckName = "All 100 cards";
+let queue = [];        // card objects for this session
+let pos = 0;
+let flipped = false;
+let results = {};      // id -> true/false for this session
+let savedMissed = [];  // ids missed, persisted
+
+// ---- storage ----
+function loadSaved(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    savedMissed = raw ? JSON.parse(raw) : [];
+    if(!Array.isArray(savedMissed)) savedMissed = [];
+  }catch(e){ savedMissed = []; }
+}
+function saveMissed(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(savedMissed)); }catch(e){}
+}
+
+// ---- elements ----
+const el = id => document.getElementById(id);
+const setup = el("setup"), cardview = el("cardview"), results_ = el("results");
+
+// ---- deck buttons ----
+function buildDecks(){
+  const grid = el("deckgrid");
+  grid.innerHTML = "";
+  const decks = [{label:"All 100 cards", n:CARDS.length, filter:null}];
+  SECTIONS.forEach(s=>{
+    decks.push({label:s, n:CARDS.filter(c=>c.s===s).length, filter:s});
+  });
+  if(savedMissed.length){
+    decks.push({label:"Cards I've missed before", n:savedMissed.length, filter:"__missed"});
+  }
+  decks.forEach(d=>{
+    const b = document.createElement("button");
+    b.type="button"; b.className="deckbtn";
+    b.setAttribute("aria-pressed", d.label===deckName ? "true":"false");
+    b.innerHTML = `<span>${d.label}</span><em>${d.n}</em>`;
+    b.addEventListener("click", ()=>{
+      deckName = d.label;
+      [...grid.children].forEach(c=>c.setAttribute("aria-pressed","false"));
+      b.setAttribute("aria-pressed","true");
+    });
+    grid.appendChild(b);
+  });
+  if(!decks.some(d=>d.label===deckName)) deckName = "All 100 cards";
+  el("savedline").textContent = savedMissed.length
+    ? savedMissed.length + " card" + (savedMissed.length===1?"":"s") + " still marked wrong from earlier. They clear once you get them right."
+    : "Nothing marked wrong yet.";
+}
+
+function deckCards(){
+  if(deckName === "All 100 cards") return CARDS.slice();
+  if(deckName === "Cards I've missed before") return CARDS.filter(c=>savedMissed.includes(c.id));
+  return CARDS.filter(c=>c.s===deckName);
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+  return arr;
+}
+
+// ---- session ----
+function start(cards){
+  queue = cards;
+  if(!queue.length){ return; }
+  if(el("shuffle").checked) shuffle(queue);
+  pos = 0; results = {};
+  setup.classList.add("hidden");
+  results_.classList.add("hidden");
+  cardview.classList.remove("hidden");
+  renderStrip();
+  renderCard();
+}
+
+function renderCard(){
+  const c = queue[pos];
+  flipped = false;
+  el("cardsec").textContent = c.s + " · card " + (pos+1) + " of " + queue.length;
+  el("cardq").innerHTML = c.q;
+  el("carda").innerHTML = c.a;
+  el("carda").classList.add("hidden");
+  el("gradeactions").classList.add("hidden");
+  el("flipactions").classList.remove("hidden");
+  window.scrollTo(0,0);
+}
+
+function flip(){
+  if(flipped) return;
+  flipped = true;
+  el("carda").classList.remove("hidden");
+  el("flipactions").classList.add("hidden");
+  el("gradeactions").classList.remove("hidden");
+  el("rightbtn").focus();
+}
+
+function grade(ok){
+  if(!flipped) return;
+  const c = queue[pos];
+  results[c.id] = ok;
+  if(ok){
+    savedMissed = savedMissed.filter(x=>x!==c.id);
+  }else if(!savedMissed.includes(c.id)){
+    savedMissed.push(c.id);
+  }
+  saveMissed();
+  pos++;
+  renderStrip();
+  if(pos >= queue.length){ finish(); }
+  else { renderCard(); }
+}
+
+function renderStrip(){
+  const strip = el("strip");
+  strip.innerHTML = "";
+  const list = queue.length ? queue : CARDS;
+  list.forEach((c,i)=>{
+    const t = document.createElement("div");
+    t.className = "tick";
+    if(queue.length){
+      if(i === pos && pos < queue.length) t.classList.add("now");
+      else if(results[c.id] === true) t.classList.add("ok");
+      else if(results[c.id] === false) t.classList.add("miss");
+    }
+    strip.appendChild(t);
+  });
+  const right = Object.values(results).filter(v=>v).length;
+  const wrong = Object.values(results).filter(v=>!v).length;
+  el("stripleft").textContent = queue.length ? deckName + " · " + queue.length + " cards" : CARDS.length + " cards";
+  el("stripright").textContent = "right " + right + " \u00b7 wrong " + wrong;
+}
+
+function finish(){
+  cardview.classList.add("hidden");
+  results_.classList.remove("hidden");
+  const right = Object.values(results).filter(v=>v).length;
+  const total = queue.length;
+  const missedIds = queue.filter(c=>results[c.id]===false).map(c=>c.id);
+  el("resultsec").textContent = deckName + " · finished";
+  el("scoreline").textContent = right + "/" + total;
+  const pct = total ? Math.round(right/total*100) : 0;
+  el("scorenote").textContent = missedIds.length === 0
+    ? "Clean run — " + pct + "%. Nothing left to review in this deck."
+    : pct + "% right. " + missedIds.length + " card" + (missedIds.length===1?"":"s") + " to go back over.";
+
+  const box = el("missedbox"), list = el("missedlist");
+  list.innerHTML = "";
+  if(missedIds.length){
+    box.classList.remove("hidden");
+    missedIds.forEach(id=>{
+      const c = CARDS.find(x=>x.id===id);
+      const li = document.createElement("li");
+      li.innerHTML = c.q;
+      list.appendChild(li);
+    });
+    el("reviewbtn").classList.remove("hidden");
+    el("reviewbtn").textContent = "Review the " + missedIds.length + " I missed";
+    el("reviewbtn").onclick = ()=> start(CARDS.filter(c=>missedIds.includes(c.id)));
+  }else{
+    box.classList.add("hidden");
+    el("reviewbtn").classList.add("hidden");
+  }
+  window.scrollTo(0,0);
+}
+
+// ---- wiring ----
+el("startbtn").addEventListener("click", ()=>{
+  const cards = deckCards();
+  if(!cards.length){ el("savedline").textContent = "That deck is empty right now. Pick another one."; return; }
+  start(cards);
+});
+el("flipbtn").addEventListener("click", flip);
+el("rightbtn").addEventListener("click", ()=>grade(true));
+el("wrongbtn").addEventListener("click", ()=>grade(false));
+el("quitbtn").addEventListener("click", ()=>{ if(pos>0){ queue = queue.slice(0,pos); finish(); } else goHome(); });
+el("againbtn").addEventListener("click", ()=> start(deckCards()));
+el("homebtn").addEventListener("click", goHome);
+
+function goHome(){
+  queue = []; pos = 0; results = {};
+  cardview.classList.add("hidden");
+  results_.classList.add("hidden");
+  setup.classList.remove("hidden");
+  buildDecks();
+  renderStrip();
+}
+
+document.addEventListener("keydown", e=>{
+  if(cardview.classList.contains("hidden")) return;
+  if(e.target.tagName === "BUTTON" && (e.key === "Enter" || e.key === " ")) return;
+  if(e.key === " " || e.key === "Enter"){ e.preventDefault(); flip(); }
+  else if(e.key === "1"){ grade(true); }
+  else if(e.key === "2"){ grade(false); }
+});
+
+// theme toggle
+const themebtn = el("themebtn");
+function currentDark(){
+  const attr = document.documentElement.getAttribute("data-theme");
+  if(attr) return attr === "dark";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+function syncThemeLabel(){ themebtn.textContent = currentDark() ? "Light" : "Dark"; }
+themebtn.addEventListener("click", ()=>{
+  document.documentElement.setAttribute("data-theme", currentDark() ? "light" : "dark");
+  syncThemeLabel();
+});
+
+loadSaved();
+buildDecks();
+renderStrip();
+syncThemeLabel();
+</script>
+</body>
+</html>
