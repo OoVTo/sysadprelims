@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>SysAd Interceptor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#050810;
+    --panel:#0B1220;
+    --line:#1E2E44;
+    --text:#DCE7F5;
+    --dim:#6E85A6;
+    --cyan:#4CE0E0;
+    --amber:#F5B942;
+    --red:#FF5A5A;
+    --green:#5CE87C;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%}
+  body{
+    background:radial-gradient(ellipse at 50% -10%, #0E1830 0%, var(--void) 60%);
+    color:var(--text);
+    font-family:"IBM Plex Mono",monospace;
+    -webkit-font-smoothing:antialiased;
+    min-height:100%;
+    display:flex;
+    justify-content:center;
+  }
+  .app{width:100%;max-width:460px;padding:14px 12px 20px;display:flex;flex-direction:column;gap:10px}
+
+  /* ---- header ---- */
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  h1{
+    font-family:"Orbitron",sans-serif;font-weight:900;font-size:17px;letter-spacing:0.04em;
+    margin:0;color:var(--cyan);text-shadow:0 0 14px rgba(76,224,224,0.35);
+  }
+  .best{font-size:11px;color:var(--dim)}
+  .best b{color:var(--amber)}
+
+  /* ---- progress ---- */
+  .progress{display:flex;gap:3px}
+  .pip{flex:1;height:6px;border-radius:2px;background:var(--line)}
+  .pip.done{background:var(--green)}
+  .pip.now{background:var(--cyan)}
+
+  /* ---- question ---- */
+  .qbar{
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    padding:10px 12px;font-size:13.5px;line-height:1.5;color:var(--text);min-height:2.6em;
+  }
+  .qbar code{color:var(--amber);background:rgba(245,185,66,0.1);padding:0 4px;border-radius:3px}
+  .qtag{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:4px}
+
+  /* ---- stage ---- */
+  .stage-wrap{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#000}
+  canvas{display:block;width:100%;aspect-ratio:400/560}
+
+  .overlay{
+    position:absolute;inset:0;background:rgba(3,6,14,0.88);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;gap:14px;padding:24px;
+  }
+  .overlay.hidden{display:none}
+  .overlay h2{font-family:"Orbitron",sans-serif;font-size:20px;margin:0;letter-spacing:0.03em}
+  .overlay p{margin:0;color:var(--dim);font-size:13px;max-width:280px;line-height:1.6}
+  .overlay .big-stat{font-family:"Orbitron",sans-serif;font-size:38px;font-weight:900;margin:0}
+  .overlay.lose h2{color:var(--red)}
+  .overlay.win h2{color:var(--green)}
+
+  /* ---- buttons ---- */
+  button{font-family:"IBM Plex Mono",monospace;cursor:pointer;border-radius:5px}
+  .btn{
+    background:var(--cyan);color:#03222A;border:none;font-weight:600;font-size:14px;
+    padding:11px 22px;letter-spacing:0.02em;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:none;border:1px solid var(--line);color:var(--dim);font-size:12px;padding:8px 16px}
+  .setup-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim)}
+  .setup-row input{width:15px;height:15px;accent-color:var(--cyan)}
+
+  /* ---- controls ---- */
+  .controls{display:flex;gap:8px;user-select:none}
+  .ctl{
+    flex:1;background:var(--panel);border:1px solid var(--line);color:var(--text);
+    font-size:20px;padding:16px 0;touch-action:manipulation;
+  }
+  .ctl:active,.ctl.active{background:#152238;border-color:var(--cyan)}
+  .ctl.fire{flex:1.3;background:#1B2E22;border-color:#2E5B3E;color:var(--green);font-family:"Orbitron",sans-serif;font-weight:700;font-size:13px;letter-spacing:0.05em}
+  .ctl.fire:active,.ctl.fire.active{background:#1F4A2C;border-color:var(--green)}
+  .hint{text-align:center;font-size:10.5px;color:var(--dim);letter-spacing:0.02em}
+
+  @media (prefers-reduced-motion: reduce){
+    .btn:active{transform:none}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1>SYSAD INTERCEPTOR</h1>
+    <div class="best">best run <b id="beststat">0</b>/<span id="besttotal">100</span></div>
+  </header>
+
+  <div class="progress" id="progress"></div>
+
+  <div class="qbar">
+    <span class="qtag" id="qtag">Question 1 of 100</span>
+    <span id="qtext">Press launch to begin.</span>
+  </div>
+
+  <div class="stage-wrap">
+    <canvas id="game"></canvas>
+
+    <div class="overlay" id="startOverlay">
+      <h2>SYSAD INTERCEPTOR</h2>
+      <p>Steer the ship under the correct answer and fire. Hit it, and the next question loads. Hit a wrong one, and your ship is gone — back to question 1.</p>
+      <div class="setup-row"><input type="checkbox" id="shuffleChk" checked><label for="shuffleChk">Shuffle question order</label></div>
+      <button class="btn" id="launchBtn" type="button">Launch</button>
+    </div>
+
+    <div class="overlay lose hidden" id="loseOverlay">
+      <h2>SHIP DOWN</h2>
+      <p id="losetext">Wrong target. Systems reset — reporting to question 1.</p>
+    </div>
+
+    <div class="overlay win hidden" id="winOverlay">
+      <h2>SECTOR CLEARED</h2>
+      <p class="big-stat" id="winstat">100/100</p>
+      <p>Every question, no misses. That's the whole prelim reviewer.</p>
+      <button class="btn" id="againBtn" type="button">Fly it again</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="ctl" id="leftBtn" type="button" aria-label="Move left">&#9664;</button>
+    <button class="ctl fire" id="fireBtn" type="button" aria-label="Fire">FIRE</button>
+    <button class="ctl" id="rightBtn" type="button" aria-label="Move right">&#9654;</button>
+  </div>
+  <p class="hint">&#8592; &#8594; or A/D to move &middot; Space to fire</p>
+
+</div>
+
+<script>
+/* =====================================================================
+   QUESTION BANK — correct answer is always options[0]; shuffled at runtime.
+===================================================================== */
+const BANK = [
+["Intro","Uptime measures the...",["percent of time a system is operational","number of admins on call","software version installed","daily backup count"]],
+["Intro","An SLA is a...",["formal commitment to a target uptime","firewall configuration file","password expiration policy","daily backup script"]],
+["Intro","99% availability allows about how much downtime a year?",["3 days, 15 hours","8 hours, 46 minutes","52 minutes","5 minutes"]],
+["Intro","99.9% availability allows about how much downtime a year?",["8 hours, 46 minutes","3 days, 15 hours","52 minutes","5 minutes"]],
+["Intro","\u201cFour nines\u201d (99.99%) allows about how much downtime a year?",["52 minutes","5 minutes","8 hours, 46 minutes","3 days, 15 hours"]],
+["Intro","\u201cFive nines\u201d (99.999%) allows about how much downtime a year?",["5 minutes","52 minutes","8 hours, 46 minutes","3 days"]],
+["Intro","MTBF stands for...",["Mean Time Between Failures","Mean Time To Backup","Mean Time Before Restart","Mean Time To Reboot"]],
+["Intro","MTTR stands for...",["Mean Time To Recovery","Mean Time To Register","Mean Time Between Reboots","Mean Time To Release"]],
+["Intro","Good administration pushes MTBF and MTTR which way?",["MTBF up, MTTR down","MTBF down, MTTR up","Both down","Both up"]],
+["Intro","Granting only the access genuinely needed is the principle of...",["least privilege","accountability","compliance","integrity"]],
+["Intro","\u201cIf it isn't documented, it doesn't ___.\u201d",["exist","matter","count","sell"]],
+["Intro","A change log entry should record what changed, when, why, and...",["by whom","how much it cost","the ticket color","the server's IP"]],
+["Intro","In the Philippines, personal data handling is governed by...",["RA 10173, the Data Privacy Act","RA 9262","RA 8792","RA 10175"]],
+["Intro","RA 10173 is enforced by the...",["National Privacy Commission","DICT","NTC","Bureau of Internal Revenue"]],
+["Intro","Which of these is NOT one of the administrator's five-word mandate?",["Profitability","Availability","Reliability","Recoverability"]],
+["Intro","Change management means making changes deliberately and...",["traceably","quickly","quietly","randomly"]],
+["Intro","Documentation mainly exists so a system can be...",["maintained by someone other than its builder","sold to a new client","hidden from auditors","ignored during outages"]],
+["CLI","Ubuntu's default shell is...",["Bash","Zsh","Fish","Csh"]],
+["CLI","In \u201cls -l /home\u201d, what is -l?",["An option","The command","The argument","A wildcard"]],
+["CLI","The root of the entire Linux filesystem tree is written as...",["/","~","C:\\","."]],
+["CLI","Regular users' home directories live under...",["/home","/root","/etc","/usr"]],
+["CLI","The administrator's own home directory is...",["/root","/home","/bin","/var"]],
+["CLI","System-wide configuration files live in...",["/etc","/var","/tmp","/dev"]],
+["CLI","Essential commands and admin programs live in...",["/bin and /sbin","/usr","/proc","/home"]],
+["CLI","Most installed programs and their data live in...",["/usr","/etc","/dev","/tmp"]],
+["CLI","Logs, mail, and spools — data that changes — live in...",["/var","/usr","/proc","/root"]],
+["CLI","Temporary files, usually cleared on reboot, live in...",["/tmp","/var","/etc","/home"]],
+["CLI","Device files representing hardware live in...",["/dev","/proc","/var","/bin"]],
+["CLI","A virtual view of the running kernel and processes lives in...",["/proc","/dev","/sys","/tmp"]],
+["CLI","Which command prints your current directory?",["pwd","cd","ls","whoami"]],
+["CLI","Which ls option gives human-readable sizes?",["-h","-a","-l","-r"]],
+["CLI","Which ls option shows hidden dotfiles?",["-a","-h","-l","-x"]],
+["CLI","The path shortcut for your home directory is...",["~","..",".","-"]],
+["CLI","The path shortcut for the parent directory is...",["..","~",".","-"]],
+["CLI","The path shortcut for the previous directory you were in is...",["-","~",".",".."]],
+["CLI","Which is an absolute path?",["/var/log/syslog","log/syslog","../log","./syslog"]],
+["CLI","A relative path is interpreted starting from...",["the current directory","root always","home always","nowhere"]],
+["CLI","Which command pages through a long file one screen at a time?",["less","cat","head","wc"]],
+["CLI","Which command prints a whole short file at once?",["cat","less","tail","wc"]],
+["CLI","Which command counts lines, words, and characters?",["wc","cat","grep","less"]],
+["CLI","Which command creates an empty file or updates its timestamp?",["touch","mkdir","cp","new"]],
+["CLI","Which flag makes mkdir create missing parent directories?",["-p","-r","-a","-f"]],
+["CLI","Which flag does cp need to copy a whole directory?",["-r","-a","-d","-x"]],
+["CLI","rm is dangerous mainly because...",["there's no recycle bin","it needs sudo","it's slow","it asks twice"]],
+["CLI","Which wildcard matches any number of characters?",["*","?","[ ]","%"]],
+["CLI","Which wildcard matches exactly one character?",["?","*","[ ]","#"]],
+["CLI","Which pattern matches file1.txt but not file10.txt?",["file?.txt","file*.txt","file.txt","file[0-9]*.txt"]],
+["CLI","Which redirection operator replaces a file's contents?",[">",">>","|","<"]],
+["CLI","Which redirection operator appends to the end of a file?",[">>",">","|","<<"]],
+["CLI","Which operator sends one command's output into the next command's input?",["|",">",">>","&"]],
+["CLI","Which command opens a program's full manual page?",["man command","command --help","help command","info command"]],
+["CLI","Which key autocompletes command and file names?",["Tab","Enter","Esc","Ctrl+C"]],
+["CLI","Which key recalls previously run commands?",["Up arrow","Down arrow","Tab","Ctrl+Z"]],
+["CLI","Is Linux case-sensitive in filenames?",["Yes \u2014 File.txt and file.txt differ","No, they're the same file","Only in /etc","Only for commands"]],
+["CLI","To list every .conf file in a directory and save it to a file, you'd run...",["ls *.conf > list.txt","ls *.conf | list.txt","cat *.conf > list.txt","find *.conf"]],
+["Perms","Every Linux account has a numeric UID and belongs to at least one...",["group (GID)","shell","home directory","package"]],
+["Perms","root's UID is always...",["0","1","1000","500"]],
+["Perms","Regular user UIDs usually start around...",["1000","0","1","100"]],
+["Perms","Encrypted passwords are stored in...",["/etc/shadow","/etc/passwd","/etc/group","/etc/sudoers"]],
+["Perms","Account definitions (username, UID, home dir, shell) live in...",["/etc/passwd","/etc/shadow","/etc/group","/etc/hosts"]],
+["Perms","Group memberships are recorded in...",["/etc/group","/etc/passwd","/etc/shadow","/etc/gshadow"]],
+["Perms","Which command creates a user with a home directory and a shell?",["useradd -m -s /bin/bash name","usermod -aG name","adduser --nohome name","useradd -G name"]],
+["Perms","Which command sets or changes a password?",["passwd name","usermod name","chpasswd name","userpass name"]],
+["Perms","Which command deletes a user and their home directory?",["userdel -r name","userdel name","usermod -r name","groupdel -r name"]],
+["Perms","In \u201cusermod -aG group user\u201d, what does -a do?",["Appends the group instead of replacing all groups","Deletes old groups","Makes it the primary group","Adds a password"]],
+["Perms","Every user has exactly one primary group and any number of...",["supplementary groups","primary groups","shells","home directories"]],
+["Perms","Which command changes both a file's owner and group at once?",["chown user:group file","chmod user:group file","chgrp user:group file","chuser file"]],
+["Perms","An ls -l listing shows how many permission characters at the start of a line?",["Ten","Nine","Six","Twelve"]],
+["Perms","Read on a directory lets you...",["list the names inside it","enter it with cd","edit its contents","run it as a program"]],
+["Perms","Execute on a directory lets you...",["enter and pass through it (cd)","list the names inside it","delete files inside it","own it"]],
+["Perms","Write on a directory lets you...",["create, rename, or delete entries","view its contents","enter it","run programs in it"]],
+["Perms","A teammate can list a directory but can't cd into it. What's missing?",["Execute (x) on the directory","Read (r) on the directory","Write (w) on the directory","Ownership of the directory"]],
+["Perms","In chmod symbolic mode, which letter means \u201cothers\u201d?",["o","g","u","a"]],
+["Perms","chmod u+x script.sh grants execute to...",["the owner","the group","others","everyone"]],
+["Perms","In octal permissions, read is worth...",["4","2","1","0"]],
+["Perms","In octal permissions, write is worth...",["2","4","1","0"]],
+["Perms","In octal permissions, execute is worth...",["1","2","4","0"]],
+["Perms","Octal digit 7 means...",["rwx","rw-","r-x","r--"]],
+["Perms","Octal digit 6 means...",["rw-","rwx","r-x","r--"]],
+["Perms","Octal digit 5 means...",["r-x","rwx","rw-","r--"]],
+["Perms","755 is the typical mode for...",["directories and scripts","ordinary files","private keys","a shared group folder"]],
+["Perms","644 is the typical mode for...",["ordinary files","directories and scripts","a private directory","a shared group folder"]],
+["Perms","700 is the typical mode for...",["a private directory","ordinary files","a shared group folder","private keys"]],
+["Perms","640 is the typical mode for...",["owner edits, group reads","a fully public file","a shared group folder","a private directory"]],
+["Perms","770 is the typical mode for...",["a folder shared by one group","a private directory","ordinary files","private keys"]],
+["Perms","rwxr-xr-- converts to octal...",["754","755","744","750"]],
+["Perms","rw-r----- converts to octal...",["640","644","600","660"]],
+["Perms","chmod 750 gives the owner...",["read, write, execute","read only","read, execute","nothing"]],
+["Perms","chmod 750 gives the group...",["read and execute, not write","read, write, execute","nothing","write only"]],
+["Perms","chmod 750 gives others...",["nothing at all","read only","execute only","read and execute"]],
+["Perms","Logging in directly as root is risky mainly because...",["one mistake has no safeguard","it's slower to type","it uses more memory","it disables logging"]],
+["Perms","Every sudo command is...",["logged against the real username","run anonymously","hidden from the journal","free of any password prompt"]],
+["Perms","Ubuntu's default umask of 022 yields what mode for new files?",["644","755","640","600"]],
+["Perms","Ubuntu's default umask of 022 yields what mode for new directories?",["755","644","750","700"]],
+["Pkg","A package bundles precompiled software with its...",["version, file list, and dependencies","source code only","license text only","icon and name only"]],
+["Pkg","A package manager's core job is to install, remove, and update packages while...",["resolving dependencies automatically","compiling source code","formatting disks","managing user accounts"]],
+["Pkg","Debian and Ubuntu use which package format?",[".deb",".rpm",".pkg",".tar"]],
+["Pkg","On Ubuntu, the high-level package tool that resolves dependencies is...",["apt","dpkg","rpm","dnf"]],
+["Pkg","On Ubuntu, the low-level tool that only handles one local file is...",["dpkg","apt","dnf","yum"]],
+["Pkg","apt update does what?",["Refreshes the local package index","Installs newer versions","Removes old packages","Compiles new packages"]],
+["Pkg","apt upgrade does what?",["Installs available newer versions","Refreshes the package index","Deletes config files","Adds a new repository"]],
+["Pkg","Which command installs a package and pulls in its dependencies?",["sudo apt install pkg","sudo dpkg -i pkg","sudo apt search pkg","sudo apt show pkg"]],
+["Pkg","apt remove deletes the package but leaves behind its...",["configuration files","binary files","cached downloads","log files"]],
+["Pkg","apt purge deletes the package and its...",["configuration files too","source code","kernel modules","user accounts"]],
+["Pkg","sudo apt autoremove cleans up...",["dependencies nothing needs anymore","every installed package","the whole apt cache","user home directories"]],
+["Pkg","Installing a vendor .deb with dpkg -i fails on dependencies because dpkg...",["can't reach repositories to fetch them","is too slow","requires root twice","doesn't support .deb files"]],
+["Pkg","The standard fix after dpkg -i fails on dependencies is...",["sudo apt install -f","sudo apt purge -f","sudo dpkg --fix","sudo apt update -f"]],
+["Pkg","A PPA is risky to add because it can install and update software...",["with root privileges","only for one user","without any packages","only in a sandbox"]],
+["Sysd","A running instance of a program, loaded into memory, is called a...",["process","package","service","daemon file"]],
+["Sysd","A process's own numeric identifier is its...",["PID","PPID","GID","UID"]],
+["Sysd","Which command gives a one-time snapshot of all processes?",["ps aux","top","htop","kill"]],
+["Sysd","Which command gives a live, interactive view that's built in on Ubuntu?",["top","ps aux","htop","journalctl"]],
+["Sysd","htop differs from top mainly in that it...",["must be installed and is friendlier","shows only kernel processes","can't be sorted","requires root always"]],
+["Sysd","The default, polite kill signal is...",["SIGTERM (15)","SIGKILL (9)","SIGHUP (1)","SIGSTOP (19)"]],
+["Sysd","The forced, immediate-termination signal is...",["SIGKILL (9)","SIGTERM (15)","SIGHUP (1)","SIGCONT (18)"]],
+["Sysd","Which should you try first when stopping a stuck process?",["kill (SIGTERM)","kill -9 (SIGKILL)","killall everything","reboot the server"]],
+["Sysd","killall name signals...",["every process with that name","only the oldest process","only root's processes","nothing until confirmed"]],
+["Sysd","nice and renice adjust a process's...",["scheduling priority","memory limit","network speed","disk quota"]],
+["Sysd","On modern Ubuntu, the first process the kernel starts (PID 1) is...",["systemd","init.d","cron","bash"]],
+["Sysd","systemctl start affects...",["the service right now","every future boot","only the next reboot","nothing until enabled"]],
+["Sysd","systemctl enable affects...",["every future boot","only right now","nothing unless restarted","only the current session"]],
+["Sysd","A web server works now but vanishes after reboot. What was skipped?",["systemctl enable","systemctl start","systemctl status","systemctl reload"]],
+["Sysd","Which single command both enables and starts a service?",["systemctl enable --now svc","systemctl start --enable svc","systemctl restart svc","systemctl reload svc"]],
+["Sysd","When a service won't start, systemctl status tells you it failed, and the real reason is usually found in...",["the journal (journalctl)","the crontab","/etc/hosts","the shell history"]],
+["Sysd","journalctl -u service -f behaves like...",["tail -f on that service's log","a one-time snapshot","a full system reboot","a package search"]]
+];
+</script>
+<script>
+/* =====================================================================
+   GAME
+===================================================================== */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = 400, H = 560; // logical coordinate system every game object is positioned in
+
+function fitCanvas(){
+  const rect = canvas.getBoundingClientRect();
+  if(rect.width < 1) return; // not laid out yet
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  const scale = (rect.width / W) * dpr;
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+}
+window.addEventListener('resize', fitCanvas);
+window.addEventListener('orientationchange', fitCanvas);
+window.addEventListener('load', fitCanvas);
+if(window.ResizeObserver) new ResizeObserver(fitCanvas).observe(canvas);
+fitCanvas();
+setTimeout(fitCanvas, 300); // catches late webfont/layout shifts on mobile
+
+const BEST_KEY = "sysad-interceptor-best";
+let best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0;
+document.getElementById('beststat').textContent = best;
+document.getElementById('besttotal').textContent = BANK.length;
+
+// ---- static starfield ----
+const stars = Array.from({length:90}, () => ({
+  x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.4+0.3, tw: Math.random()*Math.PI*2
+}));
+
+// ---- run state ----
+let order = [];
+let qIndex = 0;
+let targets = [];      // {x,y,w,h,text,lines,correct,alive}
+let bullets = [];      // {x,y,vy}
+let particles = [];    // {x,y,vx,vy,life,maxLife,color,size}
+let ship = {x: W/2, y: H-46, w:34, h:26, alive:true, thrust:0};
+let leftHeld=false, rightHeld=false;
+let state = "idle";    // idle | playing | correctPause | exploding | lost | won
+let pauseTimer = 0;
+let shakeT = 0;
+let running = false;
+let lastT = 0;
+
+function buildOrder(){
+  order = BANK.map((_,i)=>i);
+  if(document.getElementById('shuffleChk').checked){
+    for(let i=order.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [order[i],order[j]]=[order[j],order[i]];
+    }
+  }
+}
+
+function wrapLines(text){
+  if(text.length <= 13) return [text];
+  const words = text.split(' ');
+  let l1='', l2='';
+  for(const w of words){
+    if((l1+' '+w).trim().length <= Math.ceil(text.length/2)+2 && l2==='') l1 = (l1+' '+w).trim();
+    else l2 = (l2+' '+w).trim();
+  }
+  return l2 ? [l1,l2] : [l1];
+}
+
+function loadQuestion(){
+  const item = BANK[order[qIndex]];
+  const [section, q, opts] = item;
+  document.getElementById('qtag').textContent = section + " \u00b7 Question " + (qIndex+1) + " of " + BANK.length;
+  document.getElementById('qtext').textContent = q;
+
+  const shuffled = opts.map((text,i)=>({text, correct:i===0}));
+  for(let i=shuffled.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
+  }
+
+  const n = shuffled.length;
+  const marginX = 26;
+  const slot = (W - marginX*2) / n;
+  targets = shuffled.map((o,i)=>({
+    x: marginX + slot*i + slot/2,
+    y: 54,
+    w: slot-14,
+    h: 40,
+    lines: wrapLines(o.text),
+    correct: o.correct,
+    alive: true,
+    bob: Math.random()*Math.PI*2
+  }));
+
+  renderProgress();
+}
+
+function renderProgress(){
+  const bar = document.getElementById('progress');
+  bar.innerHTML = "";
+  const n = BANK.length;
+  for(let i=0;i<n;i++){
+    const p = document.createElement('div');
+    p.className = 'pip' + (i < qIndex ? ' done' : (i===qIndex ? ' now' : ''));
+    bar.appendChild(p);
+  }
+}
+
+function spawnExplosion(x,y,color,count,speed){
+  for(let i=0;i<count;i++){
+    const a = Math.random()*Math.PI*2;
+    const sp = (0.6+Math.random())*speed;
+    particles.push({
+      x,y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
+      life:0, maxLife: 40+Math.random()*30,
+      color, size: 1.5+Math.random()*2.5
+    });
+  }
+}
+
+function resetShip(){
+  ship.x = W/2; ship.y = H-46; ship.alive = true; ship.thrust = 0;
+  bullets = []; particles = [];
+}
+
+function startRun(){
+  qIndex = 0;
+  buildOrder();
+  resetShip();
+  state = "playing";
+  document.getElementById('startOverlay').classList.add('hidden');
+  document.getElementById('loseOverlay').classList.add('hidden');
+  document.getElementById('winOverlay').classList.add('hidden');
+  loadQuestion();
+  if(!running){ running = true; requestAnimationFrame(loop); }
+}
+
+function loseShip(){
+  state = "exploding";
+  spawnExplosion(ship.x, ship.y, "#FF5A5A", 46, 3.4);
+  spawnExplosion(ship.x, ship.y, "#F5B942", 26, 2.2);
+  ship.alive = false;
+  shakeT = 18;
+  pauseTimer = 70;
+}
+
+function finishLose(){
+  if(qIndex > best){ best = qIndex; localStorage.setItem(BEST_KEY, String(best)); document.getElementById('beststat').textContent = best; }
+  document.getElementById('losetext').textContent =
+    "Missed on question " + (qIndex+1) + " of " + BANK.length + ". Systems reset \u2014 back to question 1.";
+  document.getElementById('loseOverlay').classList.remove('hidden');
+  state = "idle";
+}
+
+function finishWin(){
+  best = BANK.length;
+  localStorage.setItem(BEST_KEY, String(best));
+  document.getElementById('beststat').textContent = best;
+  document.getElementById('winstat').textContent = BANK.length + "/" + BANK.length;
+  document.getElementById('winOverlay').classList.remove('hidden');
+  state = "idle";
+}
+
+function hitCorrect(target){
+  state = "correctPause";
+  spawnExplosion(target.x, target.y, "#5CE87C", 22, 2.2);
+  target.alive = false;
+  if(qIndex > best){ best = qIndex+1; localStorage.setItem(BEST_KEY, String(best)); document.getElementById('beststat').textContent = best; }
+  pauseTimer = 26;
+}
+
+function targetY(tg, t){
+  // single source of truth for a target's bob position — used for both
+  // drawing and hit-testing so a shot that looks like a hit IS a hit
+  return tg.y + Math.sin(t*0.0025 + tg.bob)*4;
+}
+
+function update(t){
+  const dt = lastT ? Math.min((t - lastT) / (1000/60), 3) : 1; // normalized to "frames at 60fps"
+  lastT = t;
+
+  if(state === "playing"){
+    const speed = 4.6 * dt;
+    if(leftHeld) ship.x -= speed;
+    if(rightHeld) ship.x += speed;
+    ship.x = Math.max(ship.w, Math.min(W-ship.w, ship.x));
+    ship.thrust = (leftHeld||rightHeld) ? 1 : 0.4;
+
+    bullets.forEach(b => b.y -= 9 * dt);
+    bullets = bullets.filter(b => b.y > -10 && !b.hit);
+
+    for(const b of bullets){
+      if(b.hit) continue;
+      for(const tg of targets){
+        if(!tg.alive) continue;
+        const ty = targetY(tg, t);
+        if(Math.abs(b.x - tg.x) < tg.w/2 && Math.abs(b.y - ty) < tg.h/2){
+          b.hit = true;
+          if(tg.correct){ hitCorrect(tg); }
+          else { loseShip(); }
+          break;
+        }
+      }
+    }
+    bullets = bullets.filter(b => !b.hit);
+  }
+
+  if(state === "correctPause"){
+    pauseTimer -= dt;
+    if(pauseTimer <= 0){
+      qIndex++;
+      bullets = [];
+      if(qIndex >= BANK.length){ finishWin(); }
+      else { loadQuestion(); state = "playing"; }
+    }
+  }
+
+  if(state === "exploding"){
+    pauseTimer -= dt;
+    if(pauseTimer <= 0 && particles.length === 0){ finishLose(); }
+  }
+
+  particles.forEach(p=>{
+    p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 0.05*dt; p.vx *= Math.pow(0.98, dt);
+    p.life += dt;
+  });
+  particles = particles.filter(p => p.life < p.maxLife);
+
+  if(shakeT > 0) shakeT -= dt;
+}
+
+function fire(){
+  if(state !== "playing" || !ship.alive) return;
+  bullets.push({x: ship.x, y: ship.y - 18, vy: -8.5});
+}
+
+/* ---- drawing ---- */
+const SHIP_SIZE = 40; // font-size in logical px — big enough to actually see
+function drawShip(x,y,alive,thrust,t){
+  if(!alive) return;
+  ctx.save();
+  ctx.translate(x,y);
+
+  // thrust flame, drawn first so it sits behind the rocket
+  const flick = 0.6 + 0.4*Math.sin(t*0.02);
+  const flameLen = 8 + 10*thrust*flick;
+  const grad = ctx.createLinearGradient(0, 10, 0, 10+flameLen);
+  grad.addColorStop(0, "rgba(245,185,66,0.9)");
+  grad.addColorStop(1, "rgba(245,185,66,0)");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(-6, 10);
+  ctx.lineTo(0, 10+flameLen);
+  ctx.lineTo(6, 10);
+  ctx.closePath();
+  ctx.fill();
+
+  // the rocket itself — default emoji glyph points up-and-right, so rotate
+  // it to point straight up at the answers it's aiming for
+  ctx.rotate(-Math.PI/4);
+  ctx.font = SHIP_SIZE + "px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("\u{1F680}", 0, 0);
+
+  ctx.restore();
+}
+
+function draw(t){
+  ctx.clearRect(0,0,W,H);
+
+  // background
+  ctx.fillStyle = "#04060C";
+  ctx.fillRect(0,0,W,H);
+  stars.forEach(s=>{
+    const a = 0.4 + 0.6*Math.abs(Math.sin(t*0.001 + s.tw));
+    ctx.fillStyle = "rgba(220,231,245,"+a+")";
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  let ox=0, oy=0;
+  if(shakeT>0){ ox=(Math.random()-0.5)*shakeT*0.6; oy=(Math.random()-0.5)*shakeT*0.6; }
+  ctx.save();
+  ctx.translate(ox,oy);
+
+  // targets
+  targets.forEach(tg=>{
+    if(!tg.alive) return;
+    const bobY = targetY(tg, t);
+    ctx.fillStyle = "rgba(11,18,32,0.9)";
+    ctx.strokeStyle = "#2A4363";
+    ctx.lineWidth = 1.4;
+    roundRect(tg.x - tg.w/2, bobY - tg.h/2, tg.w, tg.h, 6);
+    ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = "#DCE7F5";
+    ctx.font = "600 11px 'IBM Plex Mono', monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const ln = tg.lines;
+    if(ln.length === 1){
+      ctx.fillText(fitText(ln[0], tg.w-10), tg.x, bobY+0.5);
+    } else {
+      ctx.fillText(fitText(ln[0], tg.w-10), tg.x, bobY-7);
+      ctx.fillText(fitText(ln[1], tg.w-10), tg.x, bobY+7);
+    }
+    tg._drawY = bobY;
+  });
+
+  // bullets
+  ctx.fillStyle = "#F5B942";
+  bullets.forEach(b=>{
+    ctx.fillRect(b.x-1.5, b.y-7, 3, 12);
+  });
+
+  // ship
+  drawShip(ship.x, ship.y, ship.alive, ship.thrust, t);
+
+  // particles
+  particles.forEach(p=>{
+    const a = 1 - p.life/p.maxLife;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  ctx.restore();
+}
+
+function fitText(str, maxW){
+  ctx.font = "600 11px 'IBM Plex Mono', monospace";
+  if(ctx.measureText(str).width <= maxW) return str;
+  let s = str;
+  while(s.length>2 && ctx.measureText(s+"\u2026").width > maxW) s = s.slice(0,-1);
+  return s + "\u2026";
+}
+
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+function loop(t){
+  update(t);
+  draw(t);
+  requestAnimationFrame(loop);
+}
+
+/* ---- input ---- */
+function bindHold(el, onDown, onUp){
+  el.addEventListener('mousedown', e=>{e.preventDefault(); onDown();});
+  el.addEventListener('touchstart', e=>{e.preventDefault(); onDown();}, {passive:false});
+  ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev=>{
+    el.addEventListener(ev, e=>{ onUp(); });
+  });
+}
+const leftBtn = document.getElementById('leftBtn');
+const rightBtn = document.getElementById('rightBtn');
+const fireBtn = document.getElementById('fireBtn');
+bindHold(leftBtn, ()=>{leftHeld=true; leftBtn.classList.add('active');}, ()=>{leftHeld=false; leftBtn.classList.remove('active');});
+bindHold(rightBtn, ()=>{rightHeld=true; rightBtn.classList.add('active');}, ()=>{rightHeld=false; rightBtn.classList.remove('active');});
+fireBtn.addEventListener('click', e=>{e.preventDefault(); fire();});
+fireBtn.addEventListener('touchstart', e=>{e.preventDefault(); fire();}, {passive:false});
+
+document.addEventListener('keydown', e=>{
+  if(e.key === 'ArrowLeft' || e.key.toLowerCase()==='a') leftHeld = true;
+  if(e.key === 'ArrowRight' || e.key.toLowerCase()==='d') rightHeld = true;
+  if(e.key === ' ' || e.key === 'ArrowUp'){ e.preventDefault(); fire(); }
+});
+document.addEventListener('keyup', e=>{
+  if(e.key === 'ArrowLeft' || e.key.toLowerCase()==='a') leftHeld = false;
+  if(e.key === 'ArrowRight' || e.key.toLowerCase()==='d') rightHeld = false;
+});
+
+document.getElementById('launchBtn').addEventListener('click', startRun);
+document.getElementById('againBtn').addEventListener('click', startRun);
+document.getElementById('loseOverlay').addEventListener('click', startRun);
+
+renderProgress();
+draw(0);
+</script>
+</body>
+</html>
